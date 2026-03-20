@@ -3,9 +3,11 @@ import { format, isToday, isYesterday } from 'date-fns'
 import Avatar from './Avatar'
 import NewChatModal from './NewChatModal'
 import NewGroupModal from './NewGroupModal'
+import { MyProfile } from './ProfilePanel'
 import { useChatStore } from '../store/chatStore'
 import { useAuthStore } from '../store/authStore'
 import { Chat, User } from '../types'
+import { chatAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 interface Props { onChatSelect?: () => void }
@@ -42,21 +44,62 @@ const previewText = (chat: Chat) => {
   return m.content
 }
 
+// ── Confirm Dialog ─────────────────────────────────────
+function ConfirmDialog({
+  title, message, confirmLabel = 'Delete', onConfirm, onCancel,
+}: {
+  title: string
+  message: string
+  confirmLabel?: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ marginBottom: 12 }}>{title}</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 }}>{message}</p>
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn-danger" onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Sidebar({ onChatSelect }: Props) {
   const [search,    setSearch]    = useState('')
   const [showNew,   setShowNew]   = useState(false)
   const [showGroup, setShowGroup] = useState(false)
   const [showMenu,  setShowMenu]  = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [showProfile, setShowProfile] = useState(false)
 
-  const { chats, activeChat, setActiveChat, fetchMessages, isLoadingChats } = useChatStore()
+  // Per-chat context menu
+  const [chatMenu,   setChatMenu]   = useState<{ chatId: string; x: number; y: number } | null>(null)
+  const [confirmDel, setConfirmDel] = useState<Chat | null>(null)
+  const [deleting,   setDeleting]   = useState(false)
+
+  const menuRef     = useRef<HTMLDivElement>(null)
+  const chatMenuRef = useRef<HTMLDivElement>(null)
+
+  const { chats, activeChat, setActiveChat, fetchMessages, isLoadingChats, removeChatFromList } = useChatStore()
   const { user, logout } = useAuthStore()
   const me = user?._id || ''
 
-  // Close menu on outside click
+  // Close header menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close chat context menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(e.target as Node)) setChatMenu(null)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -72,31 +115,63 @@ export default function Sidebar({ onChatSelect }: Props) {
     onChatSelect?.()
   }
 
+  // Right-click or long-press on a chat row
+  const handleChatRightClick = (e: React.MouseEvent, chat: Chat) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setChatMenu({ chatId: chat._id, x: e.clientX, y: e.clientY })
+  }
+
+  // The "…" button on hover
+  const handleChatMenuBtn = (e: React.MouseEvent, chat: Chat) => {
+    e.stopPropagation()
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setChatMenu({ chatId: chat._id, x: rect.left, y: rect.bottom })
+  }
+
+  const handleDeleteChat = async () => {
+    if (!confirmDel) return
+    setDeleting(true)
+    try {
+      await chatAPI.delete(confirmDel._id)
+      removeChatFromList(confirmDel._id)
+      toast.success(
+        confirmDel.isGroupChat ? 'Left group' : 'Chat removed'
+      )
+    } catch {
+      toast.error('Could not remove chat')
+    } finally {
+      setDeleting(false)
+      setConfirmDel(null)
+    }
+  }
+
   const handleLogout = async () => {
     setShowMenu(false)
     await logout()
     toast.success('Logged out')
   }
 
+  // Find chat object for context menu
+  const contextChat = chatMenu ? chats.find(c => c._id === chatMenu.chatId) : null
+
   return (
     <>
       <div className="sidebar">
         {/* Header */}
         <div className="sidebar-header">
-          <div className="sidebar-header-left" title="Your profile">
+          <div className="sidebar-header-left" title="Your profile" onClick={() => setShowProfile(true)}>
             <Avatar name={user?.name || 'U'} avatar={user?.avatar} size="sm" isOnline />
             <span className="sidebar-user-name">{user?.name}</span>
           </div>
 
           <div className="sidebar-header-actions">
-            {/* New chat */}
             <button className="icon-btn" title="New chat" onClick={() => setShowNew(true)}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
               </svg>
             </button>
 
-            {/* Menu */}
             <div className="dropdown" ref={menuRef}>
               <button className="icon-btn" title="Menu" onClick={() => setShowMenu(s => !s)}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -162,6 +237,7 @@ export default function Sidebar({ onChatSelect }: Props) {
                   key={chat._id}
                   className={`chat-list-item ${activeChat?._id === chat._id ? 'active' : ''}`}
                   onClick={() => handleChatClick(chat)}
+                  onContextMenu={e => handleChatRightClick(e, chat)}
                 >
                   <Avatar name={name} avatar={avatar} isOnline={online} />
                   <div className="chat-item-info">
@@ -173,6 +249,17 @@ export default function Sidebar({ onChatSelect }: Props) {
                       <span className="chat-item-preview">{previewText(chat)}</span>
                     </div>
                   </div>
+
+                  {/* ⋮ button — visible on hover */}
+                  <button
+                    className="chat-item-menu-btn icon-btn"
+                    title="More options"
+                    onClick={e => handleChatMenuBtn(e, chat)}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                  </button>
                 </div>
               )
             })
@@ -180,8 +267,50 @@ export default function Sidebar({ onChatSelect }: Props) {
         </div>
       </div>
 
-      {showNew   && <NewChatModal  onClose={() => setShowNew(false)} />}
-      {showGroup && <NewGroupModal onClose={() => setShowGroup(false)} />}
+      {/* Per-chat context menu (right-click or ⋮) */}
+      {chatMenu && contextChat && (
+        <div
+          ref={chatMenuRef}
+          className="dropdown-menu chat-context-menu"
+          style={{ top: chatMenu.y, left: Math.min(chatMenu.x, window.innerWidth - 210) }}
+        >
+          <div className="dropdown-item" onClick={() => { handleChatClick(contextChat); setChatMenu(null) }}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+            Open chat
+          </div>
+          <div className="dropdown-divider" />
+          <div
+            className="dropdown-item danger"
+            onClick={() => { setConfirmDel(contextChat); setChatMenu(null) }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+            {contextChat.isGroupChat ? 'Leave group' : 'Delete chat'}
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete/leave dialog */}
+      {confirmDel && (
+        <ConfirmDialog
+          title={confirmDel.isGroupChat ? 'Leave Group?' : 'Delete Chat?'}
+          message={
+            confirmDel.isGroupChat
+              ? `You will leave "${confirmDel.name || 'this group'}". You won't see its messages anymore.`
+              : `Delete your conversation with ${chatDisplayName(confirmDel, me)}? This cannot be undone.`
+          }
+          confirmLabel={deleting ? 'Removing…' : confirmDel.isGroupChat ? 'Leave' : 'Delete'}
+          onConfirm={handleDeleteChat}
+          onCancel={() => setConfirmDel(null)}
+        />
+      )}
+
+      {showProfile && <MyProfile onClose={() => setShowProfile(false)} />}
+      {showNew     && <NewChatModal  onClose={() => setShowNew(false)} />}
+      {showGroup   && <NewGroupModal onClose={() => setShowGroup(false)} />}
     </>
   )
 }
