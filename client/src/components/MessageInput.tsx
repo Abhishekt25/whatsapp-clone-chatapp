@@ -5,7 +5,11 @@ import { useAuthStore } from '../store/authStore'
 import { emitTypingStart, emitTypingStop } from '../services/socket'
 import { messageAPI } from '../services/api'
 
-interface Props { chatId: string }
+interface Props {
+  chatId: string
+  editingMessage?: { _id: string; content: string } | null
+  onCancelEdit?: () => void
+}
 
 // ─── helpers ──────────────────────────────────────────────
 const fmtTime = (s: number) =>
@@ -187,7 +191,7 @@ export function AudioPlayer({ src, duration }: { src: string; duration?: string 
 }
 
 // ─── Main Component ────────────────────────────────────────
-export default function MessageInput({ chatId }: Props) {
+export default function MessageInput({ chatId, editingMessage, onCancelEdit }: Props) {
   // text
   const [text,       setText]       = useState('')
   const [sending,    setSending]    = useState(false)
@@ -210,8 +214,19 @@ export default function MessageInput({ chatId }: Props) {
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
   const typingTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { sendMessage, addMessage } = useChatStore()
+  const { sendMessage, addMessage, updateMessage } = useChatStore()
   const { user } = useAuthStore()
+
+  // When editing a message: pre-fill text and focus
+  useEffect(() => {
+    if (editingMessage) {
+      setText(editingMessage.content)
+      setTimeout(() => {
+        const el = textareaRef.current
+        if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length) }
+      }, 30)
+    }
+  }, [editingMessage])
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -234,10 +249,28 @@ export default function MessageInput({ chatId }: Props) {
     typingTimer.current = setTimeout(stopTyping, 2200)
   }
 
-  // ── text send ─────────────────────────────────────────
+  // ── text send / save edit ────────────────────────────
   const handleSend = async () => {
     const content = text.trim()
     if (!content || sending) return
+
+    // ── EDIT MODE ─────────────────────────────────────
+    if (editingMessage) {
+      if (content === editingMessage.content) { onCancelEdit?.(); return }
+      setSending(true)
+      try {
+        const { data } = await messageAPI.edit(editingMessage._id, content)
+        updateMessage(data.message)
+        onCancelEdit?.()
+        setText('')
+        if (textareaRef.current) textareaRef.current.style.height = 'auto'
+        toast.success('Message edited')
+      } catch { toast.error('Failed to edit message') }
+      finally { setSending(false); textareaRef.current?.focus() }
+      return
+    }
+
+    // ── SEND MODE ─────────────────────────────────────
     setText('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     if (typingTimer.current) clearTimeout(typingTimer.current)
@@ -250,6 +283,7 @@ export default function MessageInput({ chatId }: Props) {
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+    if (e.key === 'Escape' && editingMessage) { onCancelEdit?.(); setText('') }
   }
 
   // ── photo ─────────────────────────────────────────────
@@ -371,6 +405,24 @@ export default function MessageInput({ chatId }: Props) {
           onCancel={() => { setImgFile(null); setCaption('') }}
           sending={sendingImg}
         />
+      )}
+
+      {/* Edit mode strip */}
+      {editingMessage && (
+        <div className="edit-strip">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--accent)">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+          </svg>
+          <div className="edit-strip-content">
+            <span className="edit-strip-label">Editing message</span>
+            <span className="edit-strip-text">{editingMessage.content}</span>
+          </div>
+          <button className="icon-btn" onClick={() => { onCancelEdit?.(); setText('') }} title="Cancel edit">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
       )}
 
       {recording ? (

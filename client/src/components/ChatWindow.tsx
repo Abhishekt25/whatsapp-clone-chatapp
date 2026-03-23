@@ -39,11 +39,12 @@ export default function ChatWindow({ onBack, className = '' }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const me = user?._id || ''
 
-  const [showContact, setShowContact] = useState(false)
+  const [showContact,    setShowContact]    = useState(false)
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
-  // close panel when chat changes
-  useEffect(() => { setShowContact(false) }, [activeChat?._id])
+  // close panel / reset edit when chat changes
+  useEffect(() => { setShowContact(false); setEditingMessage(null) }, [activeChat?._id])
 
   if (!activeChat || !user) {
     return (
@@ -52,7 +53,7 @@ export default function ChatWindow({ onBack, className = '' }: Props) {
           <svg className="welcome-icon" viewBox="0 0 24 24" width="100" height="100" fill="currentColor">
             <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-3.825 3.113-6.937 6.937-6.937 1.856.001 3.598.723 4.907 2.034 1.31 1.311 2.031 3.054 2.03 4.908-.001 3.825-3.113 6.938-6.937 6.938z"/>
           </svg>
-          <h2>AB ChatApp</h2>
+          <h2>Chat-Hub</h2>
           <p>Select a conversation from the sidebar to start messaging with friends and groups.</p>
           <div className="lock-line">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
@@ -143,11 +144,12 @@ export default function ChatWindow({ onBack, className = '' }: Props) {
                     <span>{dateDivider(new Date(msg.createdAt))}</span>
                   </div>
                 )}
-                <MessageBubble
-                  message={msg}
-                  isOut={msg.sender._id === me}
-                  showSenderName={showSender(messages, i)}
-                />
+                  <MessageBubble
+                    message={msg}
+                    isOut={msg.sender._id === me}
+                    showSenderName={showSender(messages, i)}
+                    onEditRequest={(m) => setEditingMessage(m)}
+                  />
               </div>
             ))
           )}
@@ -164,7 +166,11 @@ export default function ChatWindow({ onBack, className = '' }: Props) {
           <div ref={bottomRef} />
         </div>
 
-        <MessageInput chatId={activeChat._id} />
+        <MessageInput
+          chatId={activeChat._id}
+          editingMessage={editingMessage}
+          onCancelEdit={() => setEditingMessage(null)}
+        />
       </div>
 
       {/* Slide-in contact / group info panel */}

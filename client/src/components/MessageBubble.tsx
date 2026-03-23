@@ -6,6 +6,7 @@ interface Props {
   message: Message
   isOut: boolean
   showSenderName: boolean
+  onEditRequest: (message: Message) => void   // ← NEW: notify parent to enter edit mode
 }
 
 // ── Double ticks ──────────────────────────────────────────
@@ -76,8 +77,7 @@ function AudioPlayer({ src }: { src: string }) {
     const a = audioRef.current
     if (!a || !total) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = (e.clientX - rect.left) / rect.width
-    a.currentTime = pct * total
+    a.currentTime = ((e.clientX - rect.left) / rect.width) * total
   }
 
   const pct = total > 0 ? (current / total) * 100 : 0
@@ -85,54 +85,31 @@ function AudioPlayer({ src }: { src: string }) {
   return (
     <div className="audio-player">
       <audio
-        ref={audioRef}
-        src={src}
-        preload="metadata"
+        ref={audioRef} src={src} preload="metadata"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => { setPlaying(false); setCurrent(0) }}
         onTimeUpdate={() => setCurrent(audioRef.current?.currentTime || 0)}
         onLoadedMetadata={() => { setTotal(audioRef.current?.duration || 0); setLoaded(true) }}
       />
-
-      {/* Play / Pause */}
       <button className="audio-play-btn" onClick={toggle} title={playing ? 'Pause' : 'Play'}>
         {playing
-          ? <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-            </svg>
-          : <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
+          ? <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          : <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         }
       </button>
-
-      {/* Waveform + progress */}
       <div className="audio-right">
-        {/* Fake waveform bars — clickable progress */}
         <div className="audio-waveform" onClick={handleSeek} title="Seek">
           {Array.from({ length: 30 }).map((_, i) => {
             const h = 25 + Math.abs(Math.sin(i * 0.9 + 1) * 18 + Math.cos(i * 0.4) * 12)
             const filled = loaded && (i / 30) * 100 <= pct
-            return (
-              <div
-                key={i}
-                className={`audio-wf-bar${filled ? ' filled' : ''}`}
-                style={{ height: `${Math.max(h, 15)}%` }}
-              />
-            )
+            return <div key={i} className={`audio-wf-bar${filled ? ' filled' : ''}`} style={{ height: `${Math.max(h, 15)}%` }} />
           })}
         </div>
-        {/* Time */}
         <div className="audio-time">
-          {loaded
-            ? `${fmt(current)} / ${fmt(total)}`
-            : <span style={{ opacity: .5 }}>Loading…</span>
-          }
+          {loaded ? `${fmt(current)} / ${fmt(total)}` : <span style={{ opacity: .5 }}>Loading…</span>}
         </div>
       </div>
-
-      {/* Mic icon badge */}
       <div className="audio-mic-badge">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
           <path d="M12 15c1.66 0 2.99-1.34 2.99-3L15 6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 15 6.7 12H5c0 3.42 2.72 6.23 6 6.72V22h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
@@ -143,10 +120,13 @@ function AudioPlayer({ src }: { src: string }) {
 }
 
 // ── Main Bubble ───────────────────────────────────────────
-export default function MessageBubble({ message, isOut, showSenderName }: Props) {
-  const base     = import.meta.env.VITE_SOCKET_URL || ''
-  const timeStr  = format(new Date(message.createdAt), 'HH:mm')
+export default function MessageBubble({ message, isOut, showSenderName, onEditRequest }: Props) {
+  const base    = import.meta.env.VITE_SOCKET_URL || ''
+  const timeStr = format(new Date(message.createdAt), 'HH:mm')
   const [lightbox, setLightbox] = useState(false)
+
+  // Only text messages that belong to me and aren't deleted can be edited
+  const canEdit = isOut && message.type === 'text' && !message.isDeleted
 
   const renderContent = () => {
     if (message.isDeleted) {
@@ -160,17 +140,11 @@ export default function MessageBubble({ message, isOut, showSenderName }: Props)
       )
     }
 
-    // ── IMAGE ────────────────────────────────────────────
     if (message.type === 'image' && message.fileUrl) {
       return (
         <div>
           <div className="msg-img-wrap" onClick={() => setLightbox(true)}>
-            <img
-              className="msg-image"
-              src={`${base}${message.fileUrl}`}
-              alt={message.fileName || 'Photo'}
-              loading="lazy"
-            />
+            <img className="msg-image" src={`${base}${message.fileUrl}`} alt={message.fileName || 'Photo'} loading="lazy" />
             <div className="msg-img-overlay">
               <svg viewBox="0 0 24 24" width="28" height="28" fill="white">
                 <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -180,19 +154,15 @@ export default function MessageBubble({ message, isOut, showSenderName }: Props)
           {message.content && message.content !== message.fileName && (
             <div className="msg-img-caption">{message.content}</div>
           )}
-          {lightbox && (
-            <Lightbox src={`${base}${message.fileUrl}`} onClose={() => setLightbox(false)} />
-          )}
+          {lightbox && <Lightbox src={`${base}${message.fileUrl}`} onClose={() => setLightbox(false)} />}
         </div>
       )
     }
 
-    // ── AUDIO ────────────────────────────────────────────
     if (message.type === 'audio' && message.fileUrl) {
       return <AudioPlayer src={`${base}${message.fileUrl}`} />
     }
 
-    // ── FILE ─────────────────────────────────────────────
     if (message.type === 'file' && message.fileUrl) {
       return (
         <div className="msg-file">
@@ -202,30 +172,18 @@ export default function MessageBubble({ message, isOut, showSenderName }: Props)
             </svg>
           </div>
           <div className="msg-file-info">
-            <a
-              href={`${base}${message.fileUrl}`}
-              target="_blank"
-              rel="noreferrer"
-              download={message.fileName}
-              className="msg-file-name"
-            >
+            <a href={`${base}${message.fileUrl}`} target="_blank" rel="noreferrer" download={message.fileName} className="msg-file-name">
               {message.fileName || 'Download file'}
             </a>
             {message.fileSize > 0 && (
               <span className="msg-file-size">
                 {message.fileSize > 1024 * 1024
                   ? `${(message.fileSize / (1024 * 1024)).toFixed(1)} MB`
-                  : `${(message.fileSize / 1024).toFixed(1)} KB`
-                }
+                  : `${(message.fileSize / 1024).toFixed(1)} KB`}
               </span>
             )}
           </div>
-          <a
-            href={`${base}${message.fileUrl}`}
-            download={message.fileName}
-            className="msg-file-dl"
-            title="Download"
-          >
+          <a href={`${base}${message.fileUrl}`} download={message.fileName} className="msg-file-dl" title="Download">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
               <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
             </svg>
@@ -234,7 +192,6 @@ export default function MessageBubble({ message, isOut, showSenderName }: Props)
       )
     }
 
-    // ── TEXT ─────────────────────────────────────────────
     return <span>{message.content}</span>
   }
 
@@ -245,31 +202,48 @@ export default function MessageBubble({ message, isOut, showSenderName }: Props)
           <div className="msg-sender-name">{message.sender.name}</div>
         )}
 
-        <div className={`msg-bubble ${isOut ? 'out' : 'in'}${message.isDeleted ? ' deleted' : ''}`}>
-          {/* Reply preview */}
-          {message.replyTo && !message.isDeleted && (
-            <div className="reply-preview">
-              <div className="reply-preview-name">
-                {(message.replyTo as Message).sender?.name || 'Unknown'}
-              </div>
-              <div className="reply-preview-text">
-                {message.replyTo.type === 'image' ? '📷 Photo'
-                  : message.replyTo.type === 'audio' ? '🎤 Voice message'
-                  : message.replyTo.type === 'file'  ? `📎 ${message.replyTo.fileName || 'File'}`
-                  : message.replyTo.content}
-              </div>
-            </div>
+        {/* Bubble + edit button wrapper */}
+        <div className={`msg-bubble-wrap ${isOut ? 'out' : 'in'}`}>
+
+          {/* ✏️ Edit button — only on own text messages, appears on hover */}
+          {canEdit && (
+            <button
+              className="msg-edit-btn"
+              onClick={() => onEditRequest(message)}
+              title="Edit message"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+              </svg>
+            </button>
           )}
 
-          {renderContent()}
-
-          {/* Meta: time + ticks */}
-          <div className="msg-meta">
-            {message.isEdited && !message.isDeleted && (
-              <span className="msg-edited">edited</span>
+          <div className={`msg-bubble ${isOut ? 'out' : 'in'}${message.isDeleted ? ' deleted' : ''}`}>
+            {/* Reply preview */}
+            {message.replyTo && !message.isDeleted && (
+              <div className="reply-preview">
+                <div className="reply-preview-name">
+                  {(message.replyTo as Message).sender?.name || 'Unknown'}
+                </div>
+                <div className="reply-preview-text">
+                  {message.replyTo.type === 'image' ? '📷 Photo'
+                    : message.replyTo.type === 'audio' ? '🎤 Voice message'
+                    : message.replyTo.type === 'file'  ? `📎 ${message.replyTo.fileName || 'File'}`
+                    : message.replyTo.content}
+                </div>
+              </div>
             )}
-            <span>{timeStr}</span>
-            {isOut && <Ticks status={message.status} />}
+
+            {renderContent()}
+
+            {/* Time + ticks */}
+            <div className="msg-meta">
+              {message.isEdited && !message.isDeleted && (
+                <span className="msg-edited">edited</span>
+              )}
+              <span>{timeStr}</span>
+              {isOut && <Ticks status={message.status} />}
+            </div>
           </div>
         </div>
       </div>
