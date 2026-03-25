@@ -3,20 +3,54 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 
+// Top country codes
+const COUNTRY_CODES = [
+  { code: '+91',  flag: '🇮🇳', name: 'India' },
+  { code: '+1',   flag: '🇺🇸', name: 'USA' },
+  { code: '+44',  flag: '🇬🇧', name: 'UK' },
+  { code: '+92',  flag: '🇵🇰', name: 'Pakistan' },
+  { code: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+  { code: '+880', flag: '🇧🇩', name: 'Bangladesh' },
+  { code: '+81',  flag: '🇯🇵', name: 'Japan' },
+  { code: '+86',  flag: '🇨🇳', name: 'China' },
+  { code: '+49',  flag: '🇩🇪', name: 'Germany' },
+  { code: '+33',  flag: '🇫🇷', name: 'France' },
+  { code: '+7',   flag: '🇷🇺', name: 'Russia' },
+  { code: '+55',  flag: '🇧🇷', name: 'Brazil' },
+  { code: '+61',  flag: '🇦🇺', name: 'Australia' },
+  { code: '+27',  flag: '🇿🇦', name: 'South Africa' },
+]
+
 export default function RegisterPage() {
-  const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm,  setConfirm]  = useState('')
+  const [name,        setName]        = useState('')
+  const [email,       setEmail]       = useState('')
+  const [countryCode, setCountryCode] = useState('+91')
+  const [phoneNum,    setPhoneNum]    = useState('')
+  const [password,    setPassword]    = useState('')
+  const [confirm,     setConfirm]     = useState('')
   const { register, isLoading } = useAuthStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !email.trim() || !password) { toast.error('Fill in all fields'); return }
+
+    if (!name.trim())  { toast.error('Name is required');  return }
+    if (!email.trim()) { toast.error('Email is required'); return }
+    if (!password)     { toast.error('Password is required'); return }
     if (password.length < 6) { toast.error('Password must be at least 6 characters'); return }
     if (password !== confirm) { toast.error('Passwords do not match'); return }
+
+    // Phone is optional — only validate if entered
+    if (phoneNum.trim() && !/^\d{5,15}$/.test(phoneNum.trim())) {
+      toast.error('Enter a valid phone number (digits only)')
+      return
+    }
+
+    // Combine country code + number (empty string if not provided)
+    const fullPhone = phoneNum.trim() ? `${countryCode}${phoneNum.trim()}` : ''
+
     try {
-      await register(name, email, password)
+      await register(name, email, fullPhone, password)
       toast.success('Account created! 🎉')
     } catch (err: unknown) {
       toast.error((err as Error).message || 'Registration failed')
@@ -35,22 +69,86 @@ export default function RegisterPage() {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+
+          {/* Name */}
           <div className="form-group">
             <label>Full name</label>
-            <input type="text" placeholder="Jane Doe" value={name} onChange={e => setName(e.target.value)} autoFocus autoComplete="name" disabled={isLoading} />
+            <input
+              type="text" placeholder="Jane Doe"
+              value={name} onChange={e => setName(e.target.value)}
+              autoFocus autoComplete="name" disabled={isLoading}
+            />
           </div>
+
+          {/* Email */}
           <div className="form-group">
             <label>Email address</label>
-            <input type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" disabled={isLoading} />
+            <input
+              type="email" placeholder="your@email.com"
+              value={email} onChange={e => setEmail(e.target.value)}
+              autoComplete="email" disabled={isLoading}
+            />
           </div>
+
+          {/* Phone (optional) */}
+          <div className="form-group">
+            <label>
+              Mobile number
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>(optional)</span>
+            </label>
+            <div className="phone-input-wrap">
+              {/* Country code dropdown */}
+              <select
+                className="country-code-select"
+                value={countryCode}
+                onChange={e => setCountryCode(e.target.value)}
+                disabled={isLoading}
+              >
+                {COUNTRY_CODES.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} {c.name}
+                  </option>
+                ))}
+              </select>
+              {/* Number input */}
+              <input
+                className="phone-number-input"
+                type="tel"
+                placeholder="9876543210"
+                value={phoneNum}
+                onChange={e => setPhoneNum(e.target.value.replace(/\D/g, ''))}
+                autoComplete="tel"
+                disabled={isLoading}
+                maxLength={15}
+              />
+            </div>
+            {phoneNum && (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                Will be saved as: {countryCode}{phoneNum}
+              </span>
+            )}
+          </div>
+
+          {/* Password */}
           <div className="form-group">
             <label>Password</label>
-            <input type="password" placeholder="Min. 6 characters" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" disabled={isLoading} />
+            <input
+              type="password" placeholder="Min. 6 characters"
+              value={password} onChange={e => setPassword(e.target.value)}
+              autoComplete="new-password" disabled={isLoading}
+            />
           </div>
+
+          {/* Confirm */}
           <div className="form-group">
             <label>Confirm password</label>
-            <input type="password" placeholder="Repeat your password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" disabled={isLoading} />
+            <input
+              type="password" placeholder="Repeat your password"
+              value={confirm} onChange={e => setConfirm(e.target.value)}
+              autoComplete="new-password" disabled={isLoading}
+            />
           </div>
+
           <button className="btn-primary" type="submit" disabled={isLoading}>
             {isLoading
               ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>

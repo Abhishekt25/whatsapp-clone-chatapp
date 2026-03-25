@@ -153,6 +153,12 @@ export function MyProfile({ onClose }: { onClose: () => void }) {
         <div className="profile-value">{user.email}</div>
       </div>
       <div className="profile-section">
+        <div className="profile-section-label">Mobile number</div>
+        <div className="profile-value">
+          {user.phone || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Not added</span>}
+        </div>
+      </div>
+      <div className="profile-section">
         <div className="profile-section-label">Member since</div>
         <div className="profile-value">{format(new Date(user.createdAt), 'MMMM d, yyyy')}</div>
       </div>
@@ -201,6 +207,12 @@ export function ContactInfo({ contact, onClose }: { contact: User; onClose: () =
         <div className="profile-section-label">Email</div>
         <div className="profile-value">{contact.email}</div>
       </div>
+      {contact.phone && (
+        <div className="profile-section">
+          <div className="profile-section-label">Mobile</div>
+          <div className="profile-value">{contact.phone}</div>
+        </div>
+      )}
       <div className="profile-section">
         <div className="profile-section-label">Member since</div>
         <div className="profile-value">{format(new Date(contact.createdAt), 'MMMM d, yyyy')}</div>

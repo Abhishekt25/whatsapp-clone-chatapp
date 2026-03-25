@@ -901,3 +901,40 @@ a:hover { text-decoration: underline; }
   display: block; font-size: 13px; color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ── Paste at BOTTOM of global.css ───────────────────── */
+
+.phone-input-wrap { display: flex; gap: 8px; align-items: center; }
+
+.country-code-select {
+  background: var(--bg-input); border: 1.5px solid transparent;
+  border-radius: var(--radius); padding: 12px 10px;
+  color: var(--text-primary); font-size: 14px;
+  font-family: var(--font); outline: none; cursor: pointer;
+  flex-shrink: 0; width: 62px;
+  transition: border-color var(--transition);
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238696a0' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+.country-code-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.country-code-select option { background: var(--bg-dropdown); color: var(--text-primary); }
+.country-code-select:disabled { opacity: .55; cursor: not-allowed; }
+
+.phone-number-input {
+  flex: 1; background: var(--bg-input); border: 1.5px solid transparent;
+  border-radius: var(--radius); padding: 13px 16px;
+  color: var(--text-primary); font-size: 15px; font-family: var(--font); outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition); width: 100%;
+}
+.phone-number-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.phone-number-input::placeholder { color: var(--text-muted); }
+.phone-number-input:disabled { opacity: .55; cursor: not-allowed; }
+
+.login-id-wrap { position: relative; }
+.login-id-wrap input { width: 100%; padding-right: 42px; }
+.login-type-badge {
+  position: absolute; right: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent); display: flex; align-items: center; pointer-events: none;
+}

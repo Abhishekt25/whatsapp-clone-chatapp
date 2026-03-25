@@ -5,6 +5,7 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
+  phone: string; 
   password: string;
   avatar: string;
   status: string;
@@ -31,6 +32,13 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Invalid email address'],
+    },
+     phone: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: [/^\+?[\d\s\-().]{7,20}$/, 'Invalid phone number'],
     },
     password: {
       type: String,

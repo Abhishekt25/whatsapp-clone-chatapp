@@ -2,6 +2,7 @@ export interface User {
   _id: string;
   name: string;
   email: string;
+  phone: string;       // ← NEW
   avatar: string;
   status: string;
   isOnline: boolean;
@@ -59,9 +60,7 @@ export interface TypingUser {
 
 export interface ApiError {
   response?: {
-    data?: {
-      message?: string;
-    };
+    data?: { message?: string };
     status?: number;
   };
   message?: string;

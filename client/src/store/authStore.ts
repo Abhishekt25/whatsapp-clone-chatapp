@@ -10,8 +10,8 @@ interface AuthStore {
   isLoading: boolean;
   error: string | null;
 
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateUser: (u: Partial<User>) => void;
@@ -21,17 +21,22 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   token: localStorage.getItem('wac_token'),
-  isAuthenticated: false,
+  isAuthenticated: !!localStorage.getItem('wac_token'),
   isLoading: true,
   error: null,
 
-  login: async (email, password) => {
+  login: async (identifier, password) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await authAPI.login({ email, password });
+      const { data } = await authAPI.login({ identifier, password });
       localStorage.setItem('wac_token', data.token);
       connectSocket(data.user._id);
-      set({ user: data.user, token: data.token, isAuthenticated: true, isLoading: false });
+      set({
+        user: data.user,
+        token: data.token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (err: unknown) {
       const e = err as ApiError;
       const msg = e.response?.data?.message || 'Login failed';
@@ -40,13 +45,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  register: async (name, email, password) => {
+  register: async (name, email, phone, password) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await authAPI.register({ name, email, password });
+      const { data } = await authAPI.register({
+        name,
+        email,
+        phone,
+        password,
+      });
       localStorage.setItem('wac_token', data.token);
       connectSocket(data.user._id);
-      set({ user: data.user, token: data.token, isAuthenticated: true, isLoading: false });
+      set({
+        user: data.user,
+        token: data.token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (err: unknown) {
       const e = err as ApiError;
       const msg = e.response?.data?.message || 'Registration failed';
@@ -56,27 +71,50 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   logout: async () => {
-    try { await authAPI.logout(); } catch { /* ignore */ }
+    try {
+      await authAPI.logout();
+    } catch {
+      // ignore
+    }
     disconnectSocket();
     localStorage.removeItem('wac_token');
-    set({ user: null, token: null, isAuthenticated: false, error: null });
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      error: null,
+    });
   },
 
   loadUser: async () => {
     const token = get().token;
-    if (!token) { set({ isLoading: false }); return; }
+    if (!token) {
+      set({ isLoading: false });
+      return;
+    }
     try {
       const { data } = await authAPI.getMe();
       connectSocket(data.user._id);
-      set({ user: data.user, isAuthenticated: true, isLoading: false });
+      set({
+        user: data.user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch {
       localStorage.removeItem('wac_token');
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
   },
 
   updateUser: (partial) => {
-    set((s) => ({ user: s.user ? { ...s.user, ...partial } : null }));
+    set((s) => ({
+      user: s.user ? { ...s.user, ...partial } : null,
+    }));
   },
 
   clearError: () => set({ error: null }),

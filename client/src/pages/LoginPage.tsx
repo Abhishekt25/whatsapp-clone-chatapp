@@ -4,15 +4,23 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const { login, isLoading }    = useAuthStore()
+  const [identifier, setIdentifier] = useState('')   // email OR phone
+  const [password,   setPassword]   = useState('')
+  const { login, isLoading } = useAuthStore()
+
+  // Detect what the user is typing live
+  const isPhone = identifier.trim() !== ''
+    && /^\+?[\d\s\-().]+$/.test(identifier)
+    && !identifier.includes('@')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email.trim() || !password) { toast.error('Please fill in all fields'); return }
+    if (!identifier.trim() || !password) {
+      toast.error('Please fill in all fields')
+      return
+    }
     try {
-      await login(email, password)
+      await login(identifier.trim(), password)
       toast.success('Welcome back! 👋')
     } catch (err: unknown) {
       toast.error((err as Error).message || 'Login failed')
@@ -31,22 +39,49 @@ export default function LoginPage() {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+
+          {/* Smart identifier field — email or phone */}
           <div className="form-group">
-            <label>Email address</label>
-            <input
-              type="email" placeholder="your@email.com"
-              value={email} onChange={e => setEmail(e.target.value)}
-              autoComplete="email" autoFocus disabled={isLoading}
-            />
+            <label>Email or mobile number</label>
+            <div className="login-id-wrap">
+              <input
+                type="text"
+                placeholder="your@email.com or +91 9876543210"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                disabled={isLoading}
+              />
+              {/* Live icon badge */}
+              {identifier.trim() && (
+                <span className="login-type-badge" title={isPhone ? 'Phone login' : 'Email login'}>
+                  {isPhone
+                    ? <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+                      </svg>
+                    : <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                      </svg>
+                  }
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Password */}
           <div className="form-group">
             <label>Password</label>
             <input
-              type="password" placeholder="••••••••"
-              value={password} onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password" disabled={isLoading}
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={isLoading}
             />
           </div>
+
           <button className="btn-primary" type="submit" disabled={isLoading}>
             {isLoading
               ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>

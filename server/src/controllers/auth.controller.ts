@@ -29,7 +29,7 @@ const safeUser = (u: InstanceType<typeof User>) => ({
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     // Validate
     if (!name?.trim() || !email?.trim() || !password) {
@@ -50,7 +50,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Create
-    const user = await User.create({ name: name.trim(), email, password });
+    const user = await User.create({
+      name: name.trim(),
+      email,
+      phone,
+      password
+    });
 
     res.status(201).json({
       success: true,
@@ -69,20 +74,46 @@ export const register = async (req: Request, res: Response): Promise<void> => {
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
+    console.log('IDENTIFIER:', identifier);
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       res.status(400).json({ success: false, message: 'Email and password are required' });
       return;
     }
+    const isEmail = identifier.includes('@');
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+   const cleanIdentifier = identifier.replace(/\D/g, '');
+   console.log('CLEAN:', cleanIdentifier);
+
+    let phoneVariants = [cleanIdentifier];
+
+    // If 10-digit number → assume India
+    if (cleanIdentifier.length === 10) {
+      phoneVariants.push(`91${cleanIdentifier}`);
+      phoneVariants.push(`+91${cleanIdentifier}`);
+    }
+
+    // If starts with 91 → also try other formats
+    if (cleanIdentifier.startsWith('91')) {
+      phoneVariants.push(cleanIdentifier.slice(2));
+      phoneVariants.push(`+${cleanIdentifier}`);
+    }
+
+    const query = isEmail
+      ? { email: identifier.toLowerCase().trim() }
+      : { phone: { $in: phoneVariants } };
+
+    const user = await User.findOne(query).select('+password');
+    console.log('USER FOUND:', user);
+
     if (!user) {
       res.status(401).json({ success: false, message: 'Invalid email or password' });
       return;
     }
 
     const match = await user.comparePassword(password);
+    console.log('PASSWORD MATCH:', match);
     if (!match) {
       res.status(401).json({ success: false, message: 'Invalid email or password' });
       return;
