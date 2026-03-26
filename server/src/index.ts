@@ -1,8 +1,8 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import path from 'path';
 
@@ -13,8 +13,7 @@ import messageRoutes from './routes/message.routes';
 import { setupSocketHandlers } from './socket/socket.handler';
 import { errorHandler, notFound } from './middleware/error.middleware';
 
-// Load env
-dotenv.config();
+dotenv.config(); 
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -70,8 +69,13 @@ setupSocketHandlers(io);
 const PORT = parseInt(process.env.PORT || '5000', 10);
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-clone';
 
+console.log(' Connecting to:', MONGO_URI.includes('atlas') || MONGO_URI.includes('mongodb+srv') ? 'MongoDB Atlas' : 'Local MongoDB ');
+
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  })
   .then(() => {
     console.log('✅  MongoDB connected');
     httpServer.listen(PORT, () => {

@@ -28,7 +28,7 @@ export const useSocketEvents = () => {
     const onMsgEdited = (msg: Message) => updateMessage(msg);
 
     const onMsgDeleted = (data: { messageId: string; chatId: string }) =>
-      softDeleteMessage(data.messageId);
+      softDeleteMessage(data.messageId, data.chatId);
 
     const onTyping = (data: { chatId: string; userId: string; userName: string }) => {
       if (data.userId !== user._id) setTyping(data.chatId, data.userId, data.userName);

@@ -79,7 +79,7 @@ export const getMyChats = async (req: AuthRequest, res: Response): Promise<void>
  */
 export const getChatById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const chat = await populateFull(Chat.findById(req.params.chatId));
+    const chat = await populateFull(Chat.findById(req.params.chatId)) as any;
     if (!chat) { res.status(404).json({ success: false, message: 'Chat not found' }); return; }
 
     const isMember = chat.participants.some(
