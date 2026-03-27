@@ -7,6 +7,7 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState('')   // email OR phone
   const [password,   setPassword]   = useState('')
   const { login, isLoading } = useAuthStore()
+  const [showPassword, setShowPassword] = useState(false)
 
   // Detect what the user is typing live
   const isPhone = identifier.trim() !== ''
@@ -70,17 +71,40 @@ export default function LoginPage() {
           </div>
 
           {/* Password */}
-          <div className="form-group">
-            <label>Password</label>
+         <div className="form-group">
+          <label>Password</label>
+
+          <div className="password-wrap">
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete="current-password"
               disabled={isLoading}
             />
+
+            {/* Eye toggle */}
+            <span
+              className="password-toggle"
+              onClick={() => setShowPassword(prev => !prev)}
+              style={{ cursor: 'pointer' }}
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                // Eye OFF (hide)
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M12 6c-5 0-9 4.5-10 6 1 1.5 5 6 10 6s9-4.5 10-6c-1-1.5-5-6-10-6zm0 10c-2.2 0-4-1.8-4-4 0-.5.1-1 .3-1.4l5.1 5.1c-.4.2-.9.3-1.4.3zm3.7-1.6l-5.1-5.1c.4-.2.9-.3 1.4-.3 2.2 0 4 1.8 4 4 0 .5-.1 1-.3 1.4z"/>
+                </svg>
+              ) : (
+                // Eye ON (show)
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/>
+                </svg>
+              )}
+            </span>
           </div>
+        </div>
 
           <button className="btn-primary" type="submit" disabled={isLoading}>
             {isLoading

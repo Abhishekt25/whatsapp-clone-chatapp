@@ -30,6 +30,8 @@ export default function RegisterPage() {
   const [password,    setPassword]    = useState('')
   const [confirm,     setConfirm]     = useState('')
   const { register, isLoading } = useAuthStore()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,22 +133,52 @@ export default function RegisterPage() {
 
           {/* Password */}
           <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password" placeholder="Min. 6 characters"
-              value={password} onChange={e => setPassword(e.target.value)}
-              autoComplete="new-password" disabled={isLoading}
-            />
+           <div className="form-group">
+              <label>Password</label>
+
+              <div className="password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Min. 6 characters"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                />
+
+                <span
+                  className="password-toggle"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Confirm */}
           <div className="form-group">
             <label>Confirm password</label>
-            <input
-              type="password" placeholder="Repeat your password"
-              value={confirm} onChange={e => setConfirm(e.target.value)}
-              autoComplete="new-password" disabled={isLoading}
-            />
+
+            <div className="password-wrap">
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Repeat your password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                autoComplete="new-password"
+                disabled={isLoading}
+              />
+
+              <span
+                className="password-toggle"
+                onClick={() => setShowConfirm(prev => !prev)}
+                title={showConfirm ? 'Hide password' : 'Show password'}
+              >
+                {showConfirm ? '🙈' : '👁️'}
+              </span>
+            </div>
           </div>
 
           <button className="btn-primary" type="submit" disabled={isLoading}>
