@@ -5,7 +5,7 @@ import {
   rejectRequest,
   getPendingRequests,
   getFriends,
-  getStatusWith,
+  getStatusWith,cancelRequest
 } from '../controllers/friendRequest.controller';
 import { protect } from '../middleware/auth.middleware';
 
@@ -19,5 +19,6 @@ router.put('/:requestId/reject',        rejectRequest);
 router.get('/pending',                  getPendingRequests);
 router.get('/friends',                  getFriends);
 router.get('/status/:userId',           getStatusWith);
+router.delete('/:requestId/cancel', protect, cancelRequest);
 
 export default router;

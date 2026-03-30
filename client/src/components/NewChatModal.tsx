@@ -143,9 +143,30 @@ export default function NewChatModal({ onClose }: Props) {
       )
     }
 
-    if (status === 'pending_sent') {
-      return <span className="fr-status-badge pending">Request Sent</span>
-    }
+   if (status === 'pending_sent') {
+  return (
+    <button
+      className="fr-cancel-btn"
+      onClick={async () => {
+        setActing(a => ({ ...a, [u._id]: true }))
+        try {
+          const { data } = await friendRequestAPI.getStatus(u._id)
+
+          await friendRequestAPI.cancel(data.requestId)
+
+          setStatuses(s => ({ ...s, [u._id]: 'none' }))
+          toast('Request cancelled')
+        } catch {
+          toast.error('Failed to cancel')
+        } finally {
+          setActing(a => ({ ...a, [u._id]: false }))
+        }
+      }}
+    >
+      Cancel Request
+    </button>
+  )
+}
 
     if (status === 'pending_received') {
       return (

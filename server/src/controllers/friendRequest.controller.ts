@@ -217,3 +217,41 @@ export const getStatusWith = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({ success: false, message: e.message });
   }
 };
+
+export const cancelRequest = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const request = await FriendRequest.findById(req.params.requestId);
+
+    if (!request) {
+      res.status(404).json({ success: false, message: 'Request not found' });
+      return;
+    }
+
+    const myId = req.user?._id.toString();
+
+    // Only sender can cancel
+    if (request.sender.toString() !== myId) {
+      res.status(403).json({ success: false, message: 'Only sender can cancel this request' });
+      return;
+    }
+
+    if (request.status !== 'pending') {
+      res.status(400).json({ success: false, message: 'Request already handled' });
+      return;
+    }
+
+    // DELETE instead of marking rejected → clean state
+    await FriendRequest.findByIdAndDelete(request._id);
+
+    // Optional socket event
+    io.to(`user_${request.receiver.toString()}`).emit('friend_request_cancelled', {
+      requestId: request._id,
+    });
+
+    res.status(200).json({ success: true, message: 'Request cancelled' });
+
+  } catch (err: unknown) {
+    const e = err as Error;
+    res.status(500).json({ success: false, message: e.message });
+  }
+};

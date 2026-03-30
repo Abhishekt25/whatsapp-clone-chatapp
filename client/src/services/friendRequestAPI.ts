@@ -10,6 +10,9 @@ export const friendRequestAPI = {
   reject:     (requestId: string) =>
     api.put(`/friend-requests/${requestId}/reject`),
 
+  cancel: (requestId: string) =>
+    api.delete(`/friend-requests/${requestId}/cancel`),
+
   getPending: () =>
     api.get('/friend-requests/pending'),
 
