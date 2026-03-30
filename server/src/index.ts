@@ -12,6 +12,7 @@ import chatRoutes from './routes/chat.routes';
 import messageRoutes from './routes/message.routes';
 import { setupSocketHandlers } from './socket/socket.handler';
 import { errorHandler, notFound } from './middleware/error.middleware';
+import friendRequestRoutes from './routes/friendRequest.routes';
 
 dotenv.config(); 
 
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/friend-requests', friendRequestRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {

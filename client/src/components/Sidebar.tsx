@@ -3,12 +3,15 @@ import { format, isToday, isYesterday } from 'date-fns'
 import Avatar from './Avatar'
 import NewChatModal from './NewChatModal'
 import NewGroupModal from './NewGroupModal'
+import FriendRequests from './FriendRequests'
+import { useFriendStore } from '../store/friendStore'
 import { MyProfile } from './ProfilePanel'
 import { useChatStore } from '../store/chatStore'
 import { useAuthStore } from '../store/authStore'
 import { Chat, User } from '../types'
 import { chatAPI } from '../services/api'
 import toast from 'react-hot-toast'
+
 
 interface Props { onChatSelect?: () => void }
 
@@ -72,6 +75,7 @@ export default function Sidebar({ onChatSelect }: Props) {
   const [search,    setSearch]    = useState('')
   const [showNew,   setShowNew]   = useState(false)
   const [showGroup, setShowGroup] = useState(false)
+  const [showRequests, setShowRequests] = useState(false)
   const [showMenu,  setShowMenu]  = useState(false)
   const [showProfile, setShowProfile] = useState(false)
 
@@ -155,6 +159,13 @@ export default function Sidebar({ onChatSelect }: Props) {
   // Find chat object for context menu
   const contextChat = chatMenu ? chats.find(c => c._id === chatMenu.chatId) : null
 
+  const { pendingRequests, fetchPending, fetchFriends } = useFriendStore()
+
+  useEffect(() => {
+  fetchPending()
+  fetchFriends()
+}, [fetchPending, fetchFriends])
+
   return (
     <>
       <div className="sidebar">
@@ -171,6 +182,20 @@ export default function Sidebar({ onChatSelect }: Props) {
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
               </svg>
             </button>
+            {/* Friend requests bell */}
+              <button
+                className="icon-btn"
+                title="Friend requests"
+                onClick={() => setShowRequests(true)}
+                style={{ position: 'relative' }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                </svg>
+                {pendingRequests.length > 0 && (
+                  <span className="fr-bell-badge">{pendingRequests.length}</span>
+                )}
+              </button>
 
             <div className="dropdown" ref={menuRef}>
               <button className="icon-btn" title="Menu" onClick={() => setShowMenu(s => !s)}>
@@ -311,6 +336,7 @@ export default function Sidebar({ onChatSelect }: Props) {
       {showProfile && <MyProfile onClose={() => setShowProfile(false)} />}
       {showNew     && <NewChatModal  onClose={() => setShowNew(false)} />}
       {showGroup   && <NewGroupModal onClose={() => setShowGroup(false)} />}
+      {showRequests && <FriendRequests onClose={() => setShowRequests(false)} />}
     </>
   )
 }

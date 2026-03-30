@@ -14,6 +14,7 @@ export const setupSocketHandlers = (io: Server): void => {
     // ── User comes online ──────────────────────────────
     socket.on('user_online', async (userId: string) => {
       socket.data.userId = userId;
+       socket.join(`user_${userId}`);
 
       // Register socket
       if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());

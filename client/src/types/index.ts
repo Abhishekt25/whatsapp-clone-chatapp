@@ -65,3 +65,31 @@ export interface ApiError {
   };
   message?: string;
 }
+
+export type FriendRequest = {
+  _id: string;
+  sender: {
+    _id: string;
+    name: string;
+    avatar: string;
+    email: string;
+    isOnline: boolean;
+  };
+  receiver: {
+    _id: string;
+    name: string;
+    avatar: string;
+    email: string;
+    isOnline: boolean;
+  };
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+};
+
+export interface FriendUser {
+  _id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  isOnline: boolean;
+}

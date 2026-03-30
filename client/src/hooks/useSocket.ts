@@ -2,7 +2,10 @@ import { useEffect } from 'react';
 import { getSocket } from '../services/socket';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';
-import { Message } from '../types';
+import { Message,FriendRequest} from '../types';
+import { useFriendStore } from '../store/friendStore'
+import toast from 'react-hot-toast';
+
 
 /**
  * Attach all global socket event listeners.
@@ -18,6 +21,7 @@ export const useSocketEvents = () => {
     clearTyping,
     updateOnlineStatus,
   } = useChatStore();
+  const { addIncoming, removeRequest, fetchFriends } = useFriendStore();
 
   useEffect(() => {
     const socket = getSocket();
@@ -40,12 +44,26 @@ export const useSocketEvents = () => {
     const onStatusChange = (data: { userId: string; isOnline: boolean; lastSeen?: string }) =>
       updateOnlineStatus(data.userId, data.isOnline, data.lastSeen);
 
+
+    // Friend request events
+    const onFriendReqReceived = (req: FriendRequest) => {
+       console.log('SOCKET EVENT RECEIVED:', req);
+      addIncoming(req)
+      toast('New friend request from ' + req.sender.name, { icon: '👋' })
+    }
+    const onFriendReqAccepted = () => { fetchFriends(); toast.success('Friend request accepted!') }
+    const onFriendReqRejected = ({ requestId }: { requestId: string }) => removeRequest(requestId)
+
     socket.on('new_message', onNewMessage);
     socket.on('message_edited', onMsgEdited);
     socket.on('message_deleted', onMsgDeleted);
     socket.on('user_typing', onTyping);
     socket.on('user_stopped_typing', onStopTyping);
     socket.on('user_status_change', onStatusChange);
+
+    socket.on('friend_request_received', onFriendReqReceived)
+    socket.on('friend_request_accepted', onFriendReqAccepted)
+    socket.on('friend_request_rejected', onFriendReqRejected)
 
     return () => {
       socket.off('new_message', onNewMessage);
@@ -54,6 +72,10 @@ export const useSocketEvents = () => {
       socket.off('user_typing', onTyping);
       socket.off('user_stopped_typing', onStopTyping);
       socket.off('user_status_change', onStatusChange);
+
+      socket.off('friend_request_received', onFriendReqReceived)
+      socket.off('friend_request_accepted', onFriendReqAccepted)
+      socket.off('friend_request_rejected', onFriendReqRejected)
     };
   }, [user, addMessage, updateMessage, softDeleteMessage, setTyping, clearTyping, updateOnlineStatus]);
 };
@@ -64,6 +86,8 @@ export const useSocketEvents = () => {
 export const useChatRoom = (chatId: string | undefined) => {
   useEffect(() => {
     const socket = getSocket();
+    console.log('SOCKET ID:', socket?.id);
+    
     if (!socket || !chatId) return;
     socket.emit('join_chat', chatId);
     return () => { socket.emit('leave_chat', chatId); };
